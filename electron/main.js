@@ -1,32 +1,37 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
-const isDev = require('electron-is-dev');
+const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
-const { setupBackend } = require('./setup_backend');
-let pythonProcess = null;
-let mainWindow = null;
+const isDev = process.env.NODE_ENV === 'development';
+
+// Keep a global reference of the window object
+let mainWindow;
 
 function createWindow() {
-  // Create the browser window.
+  // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 800,
+    minHeight: 600,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js')
     },
-    show: false, // Don't show until ready
-    icon: path.join(__dirname, 'assets', 'icon.png') // Add app icon
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    show: false
   });
 
-  // Check if we're in development and servers might already be running
+  // Load the app
   if (isDev) {
-    // Try to connect to existing servers first
-    checkExistingServers();
+    // Development mode - load from React dev server
+    mainWindow.loadURL('http://localhost:5173');
+    // Open DevTools in development
+    mainWindow.webContents.openDevTools();
   } else {
-    // In production, start the backend
-    startBackendServer();
+    // Production mode - load from built React app
+    const startUrl = path.join(__dirname, '../frontend/build/client/index.html');
+    mainWindow.loadFile(startUrl);
   }
 
   // Show window when ready
@@ -34,184 +39,168 @@ function createWindow() {
     mainWindow.show();
   });
 
+  // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  // Handle external links
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Prevent navigation to external sites
+  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    
+    if (parsedUrl.origin !== 'http://localhost:5173' && !navigationUrl.startsWith('file://')) {
+      event.preventDefault();
+      shell.openExternal(navigationUrl);
+    }
+  });
 }
 
-function checkExistingServers() {
-  // Check if React dev server is already running
-  fetch('http://localhost:5173')
-    .then(() => {
-      console.log('React dev server already running, loading app...');
-      mainWindow.loadURL('http://localhost:5173');
-      // Open the DevTools in development
-      mainWindow.webContents.openDevTools();
-    })
-    .catch(() => {
-      console.log('React dev server not running, starting backend and waiting...');
-      // Start backend and wait for frontend
-      startBackendServer();
-      // Load the app after servers start
-      setTimeout(() => {
-        if (mainWindow) {
-          mainWindow.loadURL('http://localhost:5173').catch(err => {
-            console.error('Failed to load React dev server:', err);
-            mainWindow.loadURL('data:text/html,<html><body><h2>Starting Website Analyzer...</h2><p>React dev server is starting at http://localhost:5173</p><p>Backend is starting at http://localhost:8000</p><p>Please wait...</p></body></html>');
-          });
+// Create application menu
+function createMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'New Analysis',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.webContents.send('menu-new-analysis');
+            }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Quit',
+          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
+          click: () => {
+            app.quit();
+          }
         }
-      }, 5000);
-      mainWindow.webContents.openDevTools();
+      ]
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { role: 'toggleDevTools' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' }
+      ]
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'close' }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About',
+          click: () => {
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'About Website Analyzer',
+              message: 'Website Analyzer v1.0.0',
+              detail: 'A powerful tool for analyzing websites and web pages.'
+            });
+          }
+        }
+      ]
+    }
+  ];
+
+  // macOS specific menu adjustments
+  if (process.platform === 'darwin') {
+    template.unshift({
+      label: app.getName(),
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
     });
-}
 
-function startBackendServer() {
-  // Check if backend is already running
-  fetch('http://localhost:8000')
-    .then(() => {
-      console.log('Backend already running at http://localhost:8000');
-      return;
-    })
-    .catch(async () => {
-      console.log('Starting new backend server...');
-      
-      const backendDir = isDev 
-        ? path.join(__dirname, '..', 'backend')
-        : path.join(process.resourcesPath, 'backend');
-
-      console.log('Starting Python backend from:', backendDir);
-
-      // Setup backend dependencies if in production
-      if (!isDev) {
-        try {
-          await setupBackend();
-        } catch (err) {
-          console.warn('Backend setup failed, continuing anyway:', err);
-        }
-      }
-
-      // Use spawn to run uvicorn directly
-      pythonProcess = spawn('python', ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000'], {
-        cwd: backendDir,
-        stdio: 'pipe'
-      });
-
-      pythonProcess.stdout.on('data', (data) => {
-        const message = data.toString();
-        console.log('Python Backend:', message);
-        
-        // Check if server is ready
-        if (message.includes('Uvicorn running on') || message.includes('Application startup complete')) {
-          console.log('Backend server is ready!');
-          loadFrontend();
-        }
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        const message = data.toString();
-        console.log('Python Backend Info:', message);
-        
-        // Uvicorn sends INFO messages to stderr, so check there too
-        if (message.includes('Uvicorn running on') || message.includes('Application startup complete')) {
-          console.log('Backend server is ready!');
-          loadFrontend();
-        }
-      });
-
-      pythonProcess.on('error', (error) => {
-        console.error('Failed to start Python backend:', error);
-        // Load frontend anyway in case Python is not available
-        setTimeout(() => loadFrontend(), 2000);
-      });
-
-      pythonProcess.on('close', (code) => {
-        console.log(`Python backend process exited with code ${code}`);
-      });
-
-      // Fallback: Load frontend after 5 seconds if backend doesn't signal ready
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.webContents.getURL().includes('file://')) {
-          console.log('Fallback: Loading frontend after timeout');
-          loadFrontend();
-        }
-      }, 5000);
-    });
-}
-
-function loadFrontend() {
-  if (!mainWindow) return;
-  
-  if (isDev) {
-    // In development, try React dev server first
-    mainWindow.loadURL('http://localhost:5173').catch(err => {
-      console.error('Failed to load React dev server, loading production build instead...');
-      // Fallback to production build
-      const indexPath = path.join(__dirname, 'build', 'client', 'index.html');
-      mainWindow.loadFile(indexPath);
-    });
-  } else {
-    // In production, load the built frontend
-    const indexPath = path.join(__dirname, 'build', 'client', 'index.html');
-    mainWindow.loadFile(indexPath);
+    // Window menu
+    template[4].submenu = [
+      { role: 'close' },
+      { role: 'minimize' },
+      { role: 'zoom' },
+      { type: 'separator' },
+      { role: 'front' }
+    ];
   }
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
-app.whenReady().then(createWindow);
+// App event handlers
+app.whenReady().then(() => {
+  createWindow();
+  createMenu();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
-  if (pythonProcess) {
-    pythonProcess.kill('SIGTERM');
-  }
 });
 
-app.on('activate', () => {
-  if (mainWindow === null) {
-    createWindow();
-  }
+// Security: Prevent new window creation
+app.on('web-contents-created', (event, contents) => {
+  contents.on('new-window', (event, navigationUrl) => {
+    event.preventDefault();
+    shell.openExternal(navigationUrl);
+  });
 });
 
-// Handle backend communication
-ipcMain.handle('analyze-website', async (event, data) => {
-  try {
-    const response = await fetch(`http://localhost:8000/api/v1/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error analyzing website:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('analyze-single-page', async (event, data) => {
-  try {
-    const response = await fetch(`http://localhost:8000/api/v1/analyze-page`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('Error analyzing single page:', error);
-    throw error;
+// Handle certificate errors
+app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+  if (isDev) {
+    // In development, ignore certificate errors
+    event.preventDefault();
+    callback(true);
+  } else {
+    // In production, use default behavior
+    callback(false);
   }
 });

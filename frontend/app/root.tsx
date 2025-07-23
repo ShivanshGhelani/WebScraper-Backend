@@ -11,6 +11,13 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { NavBar } from "./components/NavBar";
 
+export const meta: Route.MetaFunction = () => {
+  return [
+    { title: "Website Analyzer" },
+    { name: "description", content: "Analyze websites and extract valuable information" },
+  ];
+};
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
