@@ -1,0 +1,28 @@
+# Ignore backend dependencies and environment files
+/backend/node_modules/
+/backend/.env
+/backend/dist/
+/backend/build/
+/backend/.DS_Store
+
+# Ignore frontend dependencies and build files
+/frontend/node_modules/
+/frontend/.env
+/frontend/dist/
+/frontend/build/
+/frontend/.DS_Store
+
+# Ignore logs
+/backend/logs/
+/frontend/logs/
+*.log
+
+/backend/scrap
+__pycache__/
+*.pyc
+
+.env
+
+# Ignore OS generated files
+Thumbs.db
+.DS_Store
