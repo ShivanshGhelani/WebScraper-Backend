@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "main.py",
-      "use": "@vercel/python"
+  "functions": {
+    "main.py": {
+      "runtime": "@vercel/python",
+      "maxDuration": 300
     }
-  ],
+  },
   "routes": [
     {
       "src": "/(.*)",
@@ -14,10 +14,5 @@
   ],
   "env": {
     "PYTHONPATH": "/var/task"
-  },
-  "functions": {
-    "main.py": {
-      "maxDuration": 300
-    }
   }
 }
