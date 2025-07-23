@@ -22,12 +22,14 @@ function createWindow() {
     show: false
   });
 
-  // Load the actual React Router app
-  const startUrl = path.join(__dirname, '../frontend/build/client/electron.html');
+  // Load the dedicated Electron app
+  const startUrl = path.join(__dirname, 'app.html');
   mainWindow.loadFile(startUrl);
   
-  // Open DevTools to debug any issues
-  mainWindow.webContents.openDevTools();
+  // Open DevTools in development
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
