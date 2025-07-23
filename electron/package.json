@@ -1,0 +1,83 @@
+{
+  "name": "website-analyzer-desktop",
+  "version": "1.0.0",
+  "description": "Website Analyzer Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "concurrently \"npm run start-frontend\" \"npm run start-backend\" \"npm run start-electron\"",
+    "start-backend": "cd ../backend && python -m uvicorn main:app --host 127.0.0.1 --port 8000",
+    "start-frontend": "cd ../frontend && npm run dev",
+    "start-electron": "wait-on http://localhost:5173 http://localhost:8000 && electron .",
+    "build-frontend": "cd ../frontend && npm run build && xcopy /s /e /y build ..\\electron\\build\\",
+    "build": "npm run build-frontend && electron-builder",
+    "build-unpacked": "npm run build-frontend && electron-builder --dir",
+    "build-portable": "npm run build-frontend && electron-builder --win portable",
+    "copy-backend": "copy ..\\backend\\main.py .\\dist\\win-unpacked\\resources\\backend\\ && copy ..\\backend\\requirements.txt .\\dist\\win-unpacked\\resources\\backend\\ && xcopy /s /e /y ..\\backend\\api .\\dist\\win-unpacked\\resources\\backend\\api\\",
+    "extract-asar": "cd .\\dist\\win-unpacked\\resources && asar extract app.asar app",
+    "build-complete": "npm run build-unpacked && npm run copy-backend && npm run extract-asar",
+    "dist": "electron-builder --publish=never",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "build": {
+    "appId": "com.websiteanalyzer.app",
+    "productName": "Website Analyzer",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "setup_backend.js",
+      "build/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend",
+        "to": "backend",
+        "filter": ["**/*", "!__pycache__/**", "!**/*.pyc", "!.env", "!scrap/**"]
+      }
+    ],
+    "electronDownload": {
+      "cache": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64"]
+        }
+      ],
+      "sign": false,
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "electron-is-dev": "^2.0.0",
+    "python-shell": "^5.0.0",
+    "concurrently": "^8.0.1",
+    "wait-on": "^7.0.1"
+  },
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-builder": "^24.6.4"
+  }
+}

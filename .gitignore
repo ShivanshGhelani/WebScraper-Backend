@@ -23,6 +23,11 @@ __pycache__/
 
 .env
 
+# Ignore Electron build files
+/electron/node_modules/
+/electron/dist/
+/electron/build/
+
 # Ignore OS generated files
 Thumbs.db
 .DS_Store
