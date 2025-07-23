@@ -6,8 +6,8 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_API_URL || 'https://cawebscraper.vercel.app';
   }
   
-  // For web development, use local backend
-  return import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  // For web development and production, use the backend API
+  return import.meta.env.VITE_API_URL || 'https://cawebscraper.vercel.app';
 };
 
 export const API_CONFIG = {

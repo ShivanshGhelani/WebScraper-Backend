@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Analyzer</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      #root {
+        width: 100vw;
+        height: 100vh;
+      }
+      
+      /* Loading screen */
+      .loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-size: 18px;
+        color: #666;
+      }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">Loading Website Analyzer...</div>
+    </div>
+    
+    <script>
+        // Set Electron flag for API detection
+        window.isElectron = true;
+        
+        // Debug: Log when script loads
+        console.log('Electron app loading...');
+        
+        // Simple React app loader
+        window.addEventListener('load', function() {
+            console.log('Window loaded, initializing React app...');
+            
+            // Create a simple app if React doesn't load
+            setTimeout(function() {
+                const root = document.getElementById('root');
+                if (root && root.innerHTML.includes('Loading')) {
+                    root.innerHTML = `
+                        <div style="padding: 40px; font-family: Arial, sans-serif;">
+                            <h1>Website Analyzer</h1>
+                            <p>Desktop version powered by Electron</p>
+                            <p>Backend API: <a href="https://cawebscraper.vercel.app" target="_blank">https://cawebscraper.vercel.app</a></p>
+                            <button onclick="testAPI()" style="padding: 10px 20px; margin: 10px 0; cursor: pointer;">Test API Connection</button>
+                            <div id="api-result"></div>
+                        </div>
+                    `;
+                }
+            }, 3000);
+        });
+        
+        // Test API function
+        window.testAPI = function() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = 'Testing API...';
+            
+            fetch('https://cawebscraper.vercel.app/')
+                .then(response => response.json())
+                .then(data => {
+                    resultDiv.innerHTML = '✅ API Connected: ' + JSON.stringify(data);
+                })
+                .catch(error => {
+                    resultDiv.innerHTML = '❌ API Error: ' + error.message;
+                });
+        }
+    </script>
+</body>
+</html>

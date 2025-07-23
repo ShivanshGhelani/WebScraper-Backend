@@ -22,17 +22,12 @@ function createWindow() {
     show: false
   });
 
-  // Load the app
-  if (isDev) {
-    // Development mode - load from React dev server
-    mainWindow.loadURL('http://localhost:5173');
-    // Open DevTools in development
-    mainWindow.webContents.openDevTools();
-  } else {
-    // Production mode - load from built React app
-    const startUrl = path.join(__dirname, '../frontend/build/client/index.html');
-    mainWindow.loadFile(startUrl);
-  }
+  // Load the actual React Router app
+  const startUrl = path.join(__dirname, '../frontend/build/client/electron.html');
+  mainWindow.loadFile(startUrl);
+  
+  // Open DevTools to debug any issues
+  mainWindow.webContents.openDevTools();
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {

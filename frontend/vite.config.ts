@@ -6,8 +6,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  base: process.env.ELECTRON ? './' : '/',
   build: {
-    outDir: 'build/static',
+    outDir: 'build',
     rollupOptions: {
       output: {
         manualChunks: undefined,
