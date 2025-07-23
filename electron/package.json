@@ -26,15 +26,21 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "sign": false
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/icon.png"
+      "icon": "assets/icon.png",
+      "sign": false
     },
     "linux": {
       "target": "AppImage",
       "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   },
   "devDependencies": {

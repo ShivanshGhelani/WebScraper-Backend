@@ -3,7 +3,7 @@ const getApiBaseUrl = () => {
   // Check if we're in Electron
   if (typeof window !== 'undefined' && (window as any).isElectron) {
     // In Electron, use the Vercel deployed backend
-    return import.meta.env.VITE_API_URL || 'https://your-vercel-app.vercel.app';
+    return import.meta.env.VITE_API_URL || 'https://cawebscraper.vercel.app';
   }
   
   // For web development, use local backend
